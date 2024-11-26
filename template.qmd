@@ -133,11 +133,6 @@ any_failures = [!isempty(result.failure_dates) for result in all_results]  # <3>
 println("Number of years with failures: ", sum(any_failures), " out of ", length(all_years))  # <4>
 ```
 
-1. We get all the years in order.
-2. We run the simulation for each year.
-3. We check if any failures occurred.
-4. We print the number of years with failures and the total number of years.
-
 The system's reliability percentage was about 96%, meaning that failures occurred in 4% of the years (or 2 out of 49 years). This means that with the parameters I selected, there was a relatively low amount of failures and the system was reliable. It is notable, however, that the same number of failures occurs with a lower runoff coefficient and the default tank size, suggesting that at some point, increasing the tank size does not help the efficiency of the system when not enough water can reach the tank for it to be necessary.
 
 ### Identify a Gap in the Methods
