@@ -55,7 +55,7 @@ plot(rainfall_data) # <1>
 # Analyze Available Data
 1. Historical droughts in Ceará, Brazil in the 20th and 21st centuries occured in 1915, 1931, 1973, 1983, 1993, 1998 and 2012-2018.
 2. My data includes all of the years from 1974 and 2018, including 1983, 1993, 1998, and all years from 2012-2018.
-3. Missing data during drought years would result in difficulties 
+3. Missing data during drought years would result in difficulties in determining how the system held up when it was most needed. The years where there are droughts are the ones that are most likely for there to be a failure in the system, so without those years in the data, we could end up with a false impression of how resilient the system actually was.
 
 
 ## Understanding the Theoretical Model
@@ -66,13 +66,13 @@ a. the idea that water use will start immediately after the 150th day
 b. the idea that all households will use 74.1 liters of water per day, regardless of household size
 
 To account for (a), we will need to add some sort of constant that accounts for variability in water usage over time. 
-The result would be a dynamic consumption function, which would include a variable for how many people there are in the household, multiplied by a constant representing the average consumption of water per person. Additionally, there would be a periodic component to consumption, as it would likely increase in the driest months and be not as high in the months bordering the rainy season. This would result in a more natural model of consumption rather than one that just jumps to 74.1 liters after 150 days.
+The result would be a dynamic consumption function, which would include a variable for how many people there are in the household, multiplied by a constant representing the average consumption of water per person. Additionally, there would be a periodic component to consumption, as it would likely increase in the driest months and be not as high in the months bordering the rainy season (this addresses issue (b)). This would result in a more natural model of consumption rather than one that just jumps to 74.1 liters after 150 days.
 
 Our function would look something like this:
 ```
 C(n,t) = nB + max(0, f(t))
 ```
-Where `n` is the number of people per household, `B` is a constant representing the amount of consumption per person, and `f(t)` is a periodic function that adds periodic behavior to consumption and makes the increase in consumption more natural instead of a jump (we are using the `max` function in order to only get the values of the periodic function above 0 and to set all negative values below 0, as consumption should never be negative).
+Where `n` is the number of people per household, `t` is the day of the year (`0 < t < 366`), `B` is a constant representing the amount of consumption per person, and `f(t)` is a periodic function that adds periodic behavior to consumption and makes the increase in consumption more natural instead of a jump (we are using the `max` function in order to only get the values of the periodic function above 0 and to set all negative values below 0, as consumption should never be negative).
 
 *Finding f(t):* It will be either a function of sine or cosine. I chose cosine in this case. We then need to change the period of the function to represent the days in the year, so that we can get a model for consumption for each day. According to my research, the dry season in Brazil typically occurs between mid May (day 150 of the year) and mid November (day 330). We can represent this periodically with a phase shift so that `240` (the midpoint of 150 and 330) is at the peak of the cosine wave, and we get the following equation: `-cos((2π/365)(t-57.5))`. This function is greater than 0 for any value `t` such that `150 < t < 330` and reaches its peak at t = 240.
 
@@ -86,9 +86,6 @@ This is a less abrupt consumption function that should more accurately reflect v
 
 ### Defining the Model Parameters
 
-We can define the model parameters with sensible default values.
-You will have the opportunity to change these values later.
-
 ```{julia}
 #| output: false
 param = ModelParameters(          # <1>
@@ -99,17 +96,10 @@ param = ModelParameters(          # <1>
 )
 ```
 
-1. This creates a `ModelParameters` object with the specified parameters.
-2. The runoff coefficient ($\eta$) is a measure of how much of the rain that falls on the roof ends up in the tank.
-3. The roof area ($A$) is the area of the roof that the rain falls on.
-4. The first flush volume ($V_f$) is the volume of rain that is discarded because it is dirty.
-5. The tank capacity ($V_\text{max}$) is the maximum volume of the tank.
-
-
 #### Justify Your Modifications
 
 1. I modified the parameters `runoff_coefficient` and `tank_capacity_L` because I wanted the graph to get to the point where the amount of water stored was not plateauing and limited by tank capacity. I wanted to reach a point where the water supply was limited only by the amount collected, not the capacity of the tank. 
-2. A lower `runoff_coefficient` represents less water runoff and therefore less water collected and stored in the tank. A higher one results in more water in the tank. A lower `tank_capacity_L` represents a lower maximum amount of water that can be stored, an upper-ceiling on the amount of water that is collected, and a higher one results in more capacity and therefore more water being stored. I lowered the `runoff_coefficient` and raised the `tank_capacity_L`. This also minimized failures, although once the capacity and runoff coefficient get too small, failures increase very quickly.
+2. A lower `runoff_coefficient` represents less water runoff and therefore less water collected and stored in the tank. A higher one results in more water in the tank. A lower `tank_capacity_L` represents a lower maximum amount of water that can be stored, and a higher one results in more capacity and therefore more water being stored. I lowered the `runoff_coefficient` and raised the `tank_capacity_L`. This also minimized failures, although once the capacity and runoff coefficient get too small, failures increase very quickly.
 
 ### Running the Simulation for One Year
 
@@ -120,10 +110,6 @@ rainfall_1981 = rainfall_data.annual_data[1981]    # <1>
 results_1981 = run_timesteps(rainfall_1981, param) # <2>
 p1 = plot(results_1981)                                 # <3>
 ```
-
-1. We select the annual rainfall data for the year 1981.
-2. We run the simulation for the year 1981.
-3. We plot the results, again using a `plot` function defined in [viz.jl](./RainwaterHarvesting/src/viz.jl).
 
 To compare rainfall and tank volume:
 
@@ -152,10 +138,10 @@ println("Number of years with failures: ", sum(any_failures), " out of ", length
 3. We check if any failures occurred.
 4. We print the number of years with failures and the total number of years.
 
-The system's reliability percentage was about 96%, meaning that failures occurred in 4% of the years (or 2 out of 49 years). This means that with the parameters I selected, there was a relatively low amount of failures and the system was very reliable. It is notable, however, that the same number of failures occurs with a lower runoff coefficient and the default tank size, suggesting that at some point, increasing the tank size does not help the efficiency of the system, as not enough water can reach the tank for it to be necessary.
+The system's reliability percentage was about 96%, meaning that failures occurred in 4% of the years (or 2 out of 49 years). This means that with the parameters I selected, there was a relatively low amount of failures and the system was reliable. It is notable, however, that the same number of failures occurs with a lower runoff coefficient and the default tank size, suggesting that at some point, increasing the tank size does not help the efficiency of the system when not enough water can reach the tank for it to be necessary.
 
 ### Identify a Gap in the Methods
 
 1. One limitation in the current model is that it assumes constant usage across all households and for all days of the dry season. This does not realistically reflect real-world water use trends. 
 2. In order to address this gap, we would need to find a way to more dynamically model water usage across households and across the dry season. For example, we could use historical water usage data across several households and craft a more realistic and dynamic model based on household size, time of year, etc.
-3. This would enhance the analysis by allowing us to better determine how much water was really needed and therefore more accurately reflect how many failures there really were. For example, there could have been times where our model showed no failures but in the real world, there was a higher demand and usage for water than 74.1 liters per day, which could have resulted in more failures than we thought.
+3. This would enhance the analysis by allowing us to better determine how much water was really needed and therefore more accurately reflect how many failures there really were. For example, there could have been times where our model showed no failures but in the real world, there was a higher demand for water than 74.1 liters per day, which could have resulted in more failures than we thought.
